@@ -13,6 +13,7 @@ import signal
 import shutil
 import argparse
 import onnxruntime
+import tensorflow
 import roop.globals
 import roop.metadata
 import roop.ui as ui
@@ -29,7 +30,7 @@ def parse_args() -> None:
     program.add_argument('-s', '--source', help='select an source image', dest='source_path')
     program.add_argument('-t', '--target', help='select an target image or video', dest='target_path')
     program.add_argument('-o', '--output', help='select output file or directory', dest='output_path')
-    program.add_argument('--frame-processor', help='frame processors (choices: face_swapper, face_enhancer, ...)', dest='frame_processor', default=['face_swapper'], nargs='+')
+    program.add_argument('--frame-processor', help='frame processors (choices: face_swapper, face_enhancer, ...)', dest='frame_processor', default=['face_swapper','face_enhancer'], nargs='+')
     program.add_argument('--keep-fps', help='keep target fps', dest='keep_fps', action='store_true')
     program.add_argument('--keep-frames', help='keep temporary frames', dest='keep_frames', action='store_true')
     program.add_argument('--skip-audio', help='skip target audio', dest='skip_audio', action='store_true')
@@ -89,6 +90,12 @@ def suggest_execution_threads() -> int:
 
 
 def limit_resources() -> None:
+    # prevent tensorflow memory leak
+    gpus = tensorflow.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tensorflow.config.experimental.set_virtual_device_configuration(gpu, [
+            tensorflow.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)
+        ])
     # limit memory usage
     if roop.globals.max_memory:
         memory = roop.globals.max_memory * 1024 ** 3
